@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Candy Clicker Game</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+    body { height: 100vh; width: 100vw; background: radial-gradient(circle at center, #d8a0f8 0%, #a777eb 100%); font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px; overflow: hidden; position: relative; }
+    .top-container { display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10; }
+    .score-container { background: rgba(255, 255, 255, 0.4); padding: 8px 40px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
+    .score { font-size: 36px; font-weight: 900; color: #000; text-align: center; }
+    .hud-stats { display: flex; gap: 10px; background: rgba(0, 0, 0, 0.25); padding: 6px 14px; border-radius: 12px; font-size: 14px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+    .buffs-container { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+    .frenzy-badge, .blood-frenzy-badge, .cursed-badge { font-weight: 800; font-size: 13px; padding: 4px 10px; border-radius: 10px; display: none; animation: pulse 1s infinite alternate; }
+    .frenzy-badge { background: #ff0055; color: #fff; }
+    .blood-frenzy-badge { background: #5500ff; color: #fff; animation-duration: 0.5s; }
+    .cursed-badge { background: #222; color: #ff3333; animation-duration: 0.8s; }
+    @keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.04); } }
+    .clickable-area { display: flex; justify-content: center; align-items: center; width: 240px; height: 240px; cursor: pointer; z-index: 20; border-radius: 50%; position: relative; }
+    .candy { width: 180px; height: auto; pointer-events: none; filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.15)); transition: transform 0.08s ease-in-out; }
+    .clickable-area:active .candy { transform: scale(0.88); }
+    .golden-candy { position: absolute; width: 65px; height: 65px; cursor: pointer; z-index: 50; filter: drop-shadow(0 0 12px #ffe600); animation: floatGolden 0.6s infinite alternate ease-in-out; }
+    @keyframes floatGolden { 0% { transform: translateY(0px) rotate(-5deg); } 100% { transform: translateY(-10px) rotate(5deg); } }
+    .float-text { position: absolute; font-weight: 900; font-size: 22px; color: #fff700; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.2s forwards ease-out; z-index: 60; }
+    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
+    .bottom-bar { width: 100%; max-width: 360px; display: flex; justify-content: space-between; align-items: flex-end; z-index: 20; }
+    .btn { background: linear-gradient(180deg, #ffb2e6 0%, #ff7bc3 100%); border: 3px solid #000; border-radius: 16px; box-shadow: 0 4px 0 #000; display: flex; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; }
+    .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+    .btn-upgrade { width: 130px; height: 50px; font-size: 15px; color: #000; }
+    .right-buttons { display: flex; flex-direction: column; gap: 6px; }
+    .btn-icon { width: 48px; height: 42px; font-size: 18px; }
+    .shop-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 100; }
+    .shop-modal { background: #f7dfff; border: 4px solid #000; border-radius: 20px; width: 90%; max-width: 350px; padding: 18px; box-shadow: 0 8px 0 #000; display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow-y: auto; }
+    .shop-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #000; padding-bottom: 6px; }
+    .close-btn { background: #ff5e5e; border: 2px solid #000; border-radius: 8px; width: 28px; height: 28px; font-weight: bold; cursor: pointer; }
+    .shop-item { background: #fff; border: 3px solid #000; border-radius: 12px; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .rebirth-item { background: #fff3c4; border-color: #d48800; }
+    .super-rebirth-item { background: #e0c4ff; border-color: #5500aa; }
+    .switch-item { background: #e2f7ff; border-color: #0088cc; }
+    .wipe-item { background: #ffe6e6; border-color: #cc0000; }
+    .buy-btn { background: linear-gradient(180deg, #b2ffb5 0%, #4ceb53 100%); border: 2px solid #000; border-radius: 10px; padding: 6px 10px; font-weight: bold; cursor: pointer; }
+    .rebirth-btn { background: linear-gradient(180deg, #ffd875 0%, #ffaa00 100%); }
+    .super-rebirth-btn { background: linear-gradient(180deg, #d875ff 0%, #8800aa 100%); color: #fff; }
+    .switch-btn { background: linear-gradient(180deg, #b2ffb5 0%, #4ceb53 100%); }
+    .wipe-btn { background: linear-gradient(180deg, #ff7b7b 0%, #e60000 100%); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="top-container">
+    <div class="score-container"><div id="scoreDisplay" class="score">0</div></div>
+    <div class="hud-stats">
+      <span id="hudPower">Power: 1</span><span>•</span><span id="hudCps">CPS: 0/s</span>
+    </div>
+    <div class="buffs-container">
+      <div class="cursed-badge" id="badgeCursedFinger">💀 CURSED FINGER (0 CPS) - 0s</div>
+      <div class="blood-frenzy-badge" id="badgeBloodFrenzy">🦇 BLOOD FRENZY (666x) - 0s</div>
+      <div class="frenzy-badge" id="badgeClickFrenzy">🔥 CLICK FRENZY (777x) - 0s</div>
+      <div class="frenzy-badge" id="badgeDragonFlight">🐉 DRAGON FLIGHT (1223x) - 0s</div>
+      <div class="frenzy-badge" id="badgeFrenzy">🔥 FRENZY (7x) - 0s</div>
+      <div class="frenzy-badge" id="badgeDragonHarvest">🐉 DRAGON HARVEST (30%) - 0s</div>
+    </div>
+  </div>
+
+  <div class="clickable-area" id="candyBtn" onclick="clickCandy(event)">
+    <svg class="candy" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><radialGradient id="candyBody" cx="40%" cy="40%" r="60%"><stop offset="0%" stop-color="#3bf0ff"/><stop offset="100%" stop-color="#008ce3"/></radialGradient></defs>
+      <path d="M 60,60 Q 20,20 10,30 Q 0,60 10,90 Q 20,100 60,60 Z" fill="url(#candyBody)" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M 140,60 Q 180,20 190,30 Q 200,60 190,90 Q 180,100 140,60 Z" fill="url(#candyBody)" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+      <circle cx="100" cy="60" r="42" fill="url(#candyBody)" stroke="#000" stroke-width="5"/>
+      <circle cx="88" cy="48" r="6" fill="#ffffff" opacity="0.7"/>
+    </svg>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn btn-upgrade" onclick="openShop()">⬆️ SHOP</button>
+    <div class="right-buttons"><button class="btn btn-icon" onclick="manualSave()" title="Save Game">💾</button></div>
+  </div>
+
+  <div class="shop-overlay" id="shopOverlay">
+    <div class="shop-modal">
+      <div class="shop-header"><h2>Candy Shop</h2><button class="close-btn" onclick="closeShop()">X</button></div>
+      <div class="shop-item"><div><h4>Click Power</h4><p id="powerText">Power: 1</p></div><button class="buy-btn" id="buyPowerBtn" onclick="buyPower()">Cost: 10</button></div>
+      <div class="shop-item"><div><h4>Auto Clicker</h4><p id="autoText">CPS: +0/s</p></div><button class="buy-btn" id="buyAutoBtn" onclick="buyAuto()">Cost: 50</button></div>
+      <div class="shop-item switch-item"><div><h4>Golden Switch</h4><p id="switchText">Status: OFF</p></div><button class="buy-btn switch-btn" id="goldenSwitchBtn" onclick="toggleGoldenSwitch()">Turn ON</button></div>
+      <div class="shop-item rebirth-item"><div><h4>Rebirth</h4><p id="rebirthText">+2x Multiplier</p></div><button class="buy-btn rebirth-btn" id="buyRebirthBtn" onclick="buyRebirth()">Cost: 10M</button></div>
+      <div class="shop-item super-rebirth-item"><div><h4>Super Rebirth</h4><p id="superRebirthText">100x Permanent Boost</p></div><button class="buy-btn super-rebirth-btn" id="buySuperRebirthBtn" onclick="buySuperRebirth()">Cost: 1Sx</button></div>
+      <div class="shop-item wipe-item"><div><h4>Reset Game</h4><p>Wipe all progress</p></div><button class="buy-btn wipe-btn" onclick="wipeSave()">Wipe Save</button></div>
+    </div>
+  </div>
+
+  <script>
+    let score = 0, pointsPerClick = 1, clickUpgradeCost = 10, autoClickers = 0, autoClickCost = 50;
+    let rebirths = 0, rebirthMultiplier = 1, rebirthCost = 10000000;
+    let superRebirths = 0, superRebirthMultiplier = 1, superRebirthCost = 1000000000000000000000;
+    let autoAccumulator = 0;
+    let goldenSwitchOn = false;
+
+    let frenzyMul = 1, clickFrenzyMul = 1, dragonHarvestMul = 1, dragonFlightMul = 1, bloodFrenzyMul = 1, cursedFingerMul = 1;
+    let frenzyTime = 0, clickFrenzyTime = 0, dragonHarvestTime = 0, dragonFlightTime = 0, bloodFrenzyTime = 0, cursedFingerTime = 0;
+
+    function loadGame() {
+      try {
+        const d = JSON.parse(localStorage.getItem('candyClickerSave_v11') || '{}');
+        score = Number(d.score) || 0;
+        pointsPerClick = Number(d.pointsPerClick) || 1;
+        clickUpgradeCost = Number(d.clickUpgradeCost) || 10;
+        autoClickers = Number(d.autoClickers) || 0;
+        autoClickCost = Number(d.autoClickCost) || 50;
+        rebirths = Number(d.rebirths) || 0;
+        rebirthMultiplier = Number(d.rebirthMultiplier) || 1;
+        rebirthCost = Number(d.rebirthCost) || 10000000;
+        superRebirths = Number(d.superRebirths) || 0;
+        superRebirthMultiplier = Number(d.superRebirthMultiplier) || 1;
+        superRebirthCost = Number(d.superRebirthCost) || 1000000000000000000000;
+        goldenSwitchOn = Boolean(d.goldenSwitchOn);
+        updateSwitchUI();
+      } catch (e) {}
+    }
+
+    function saveGame() {
+      try {
+        localStorage.setItem('candyClickerSave_v11', JSON.stringify({
+          score, pointsPerClick, clickUpgradeCost, autoClickers, autoClickCost,
+          rebirths, rebirthMultiplier, rebirthCost, superRebirths, superRebirthMultiplier, superRebirthCost,
+          goldenSwitchOn
+        }));
+      } catch (e) {}
+    }
+
+    loadGame();
+
+    function formatNumber(num) {
+      if (isNaN(num) || num < 1000) return Math.floor(num || 0).toString();
+      const s = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "O", "N", "Dc"];
+      const i = Math.floor(Math.log10(num) / 3);
+      return i >= s.length ? num.toExponential(2) : (num / Math.pow(10, i * 3)).toFixed(1).replace(/\.0$/, '') + s[i];
+    }
+
+    function getBaseMultipliers() {
+      if (cursedFingerTime > 0) return 0;
+      return rebirthMultiplier * superRebirthMultiplier * frenzyMul * dragonHarvestMul * bloodFrenzyMul;
+    }
+
+    function getClickMultipliers() {
+      return rebirthMultiplier * superRebirthMultiplier * frenzyMul * dragonFlightMul * bloodFrenzyMul * cursedFingerMul;
+    }
+
+    function updateDisplay() {
+      document.getElementById('scoreDisplay').innerText = formatNumber(score);
+      const pMul = getClickMultipliers() * clickFrenzyMul;
+      const cMul = getBaseMultipliers();
+      document.getElementById('hudPower').innerText = `Power: ${formatNumber(pointsPerClick * pMul)}`;
+      document.getElementById('hudCps').innerText = `CPS: ${formatNumber(autoClickers * cMul)}/s`;
+    }
+
+    function updateShopTexts() {
+      document.getElementById('buyPowerBtn').innerText = `Cost: ${formatNumber(clickUpgradeCost)}`;
+      document.getElementById('powerText').innerText = `Power: ${formatNumber(pointsPerClick)}`;
+      document.getElementById('buyAutoBtn').innerText = `Cost: ${formatNumber(autoClickCost)}`;
+      document.getElementById('autoText').innerText = `CPS: +${formatNumber(autoClickers * rebirthMultiplier * superRebirthMultiplier)}/s`;
+      document.getElementById('buyRebirthBtn').innerText = `Cost: ${formatNumber(rebirthCost)}`;
+      document.getElementById('buySuperRebirthBtn').innerText = `Cost: ${formatNumber(superRebirthCost)}`;
+      document.getElementById('superRebirthText').innerText = `Boost: ${formatNumber(superRebirthMultiplier)}x`;
+      updateSwitchUI();
+    }
+
+    function updateSwitchUI() {
+      const btn = document.getElementById('goldenSwitchBtn');
+      const txt = document.getElementById('switchText');
+      if (!btn || !txt) return;
+      if (goldenSwitchOn) {
+        btn.innerText = "Turn OFF";
+        btn.style.background = "linear-gradient(180deg, #ff7b7b 0%, #e60000 100%)";
+        txt.innerText = "Status: ON";
+      } else {
+        btn.innerText = "Turn ON";
+        btn.style.background = "linear-gradient(180deg, #b2ffb5 0%, #4ceb53 100%)";
+        txt.innerText = "Status: OFF";
+      }
+    }
+
+    function toggleGoldenSwitch() {
+      goldenSwitchOn = !goldenSwitchOn;
+      updateSwitchUI();
+      if (!goldenSwitchOn) {
+        // Turned OFF -> spawn golden candy!
+        spawnGoldenCandy();
+      }
+      saveGame();
+    }
+
+    function updateBuffDisplay() {
+      const setBadge = (id, show, text) => {
+        const el = document.getElementById(id);
+        el.style.display = show ? 'block' : 'none';
+        if (show) el.innerText = text;
+      };
+      setBadge('badgeCursedFinger', cursedFingerTime > 0, `💀 CURSED FINGER (0 CPS) - ${cursedFingerTime}s`);
+      setBadge('badgeBloodFrenzy', bloodFrenzyTime > 0, `🦇 BLOOD FRENZY (666x) - ${bloodFrenzyTime}s`);
+      setBadge('badgeClickFrenzy', clickFrenzyTime > 0, `🔥 CLICK FRENZY (777x) - ${clickFrenzyTime}s`);
+      setBadge('badgeDragonFlight', dragonFlightTime > 0, `🐉 DRAGON FLIGHT (1223x) - ${dragonFlightTime}s`);
+      setBadge('badgeFrenzy', frenzyTime > 0, `🔥 FRENZY (7x) - ${frenzyTime}s`);
+      setBadge('badgeDragonHarvest', dragonHarvestTime > 0, `🐉 DRAGON HARVEST (30%) - ${dragonHarvestTime}s`);
+    }
+
+    function clickCandy(e) {
+      score += pointsPerClick * getClickMultipliers() * clickFrenzyMul;
+      updateDisplay();
+    }
+
+    function openShop() { updateShopTexts(); document.getElementById('shopOverlay').style.display = 'flex'; }
+    function closeShop() { document.getElementById('shopOverlay').style.display = 'none'; }
+
+    function buyPower() {
+      if (score >= clickUpgradeCost) {
+        score -= clickUpgradeCost;
+        pointsPerClick = pointsPerClick < 10 ? pointsPerClick + 1 : Math.round(pointsPerClick * 1.4);
+        clickUpgradeCost = Math.floor(clickUpgradeCost * 1.7);
+        updateShopTexts(); updateDisplay();
+      } else alert(`Need ${formatNumber(clickUpgradeCost)} points!`);
+    }
+
+    function buyAuto() {
+      if (score >= autoClickCost) {
+        score -= autoClickCost;
+        autoClickers = autoClickers === 0 ? 1 : Math.round(autoClickers * 1.4) + 1;
+        autoClickCost = Math.floor(autoClickCost * 1.7);
+        updateShopTexts(); updateDisplay();
+      } else alert(`Need ${formatNumber(autoClickCost)} points!`);
+    }
+
+    function resetRunStats() {
+      score = 0; pointsPerClick = 1; clickUpgradeCost = 10; autoClickers = 0; autoClickCost = 50; autoAccumulator = 0;
+    }
+
+    function buyRebirth() {
+      if (score >= rebirthCost) {
+        resetRunStats();
+        rebirths++; rebirthMultiplier *= 2; rebirthCost *= 40;
+        updateShopTexts(); updateBuffDisplay(); updateDisplay();
+        alert(`Rebirth successful! Permanent ${rebirthMultiplier}x boost unlocked!`);
+      } else alert(`Need ${formatNumber(rebirthCost)} points to Rebirth!`);
+    }
+
+    function buySuperRebirth() {
+      if (score >= superRebirthCost) {
+        resetRunStats();
+        rebirths = 0; rebirthMultiplier = 1; rebirthCost = 10000000;
+        superRebirths++; superRebirthMultiplier *= 100; superRebirthCost *= 1000000;
+        updateShopTexts(); updateBuffDisplay(); updateDisplay();
+        alert(`Super Rebirth successful! Permanent ${superRebirthMultiplier}x boost unlocked!`);
+      } else alert(`Need ${formatNumber(superRebirthCost)} points for a Super Rebirth!`);
+    }
+
+    function wipeSave() {
+      if (confirm("Are you sure you want to wipe your save data?")) {
+        try { localStorage.removeItem('candyClickerSave_v11'); } catch (e) {}
+        window.location.reload();
+      }
+    }
+
+    function manualSave() { saveGame(); alert("Game saved successfully!"); }
+
+    function showFloatingText(text, x, y) {
+      const el = document.createElement('div');
+      el.className = 'float-text'; el.innerText = text;
+      el.style.left = `${x}px`; el.style.top = `${y}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function spawnGoldenCandy() {
+      // If one already exists, remove it so the new one can spawn right away
+      const existing = document.querySelector('.golden-candy');
+      if (existing) existing.remove();
+
+      const gc = document.createElement('div');
+      gc.className = 'golden-candy';
+      gc.innerHTML = `<svg viewBox="0 0 200 120" style="width:100%;height:100%;pointer-events:none;"><circle cx="100" cy="60" r="45" fill="#ffcc00" stroke="#000" stroke-width="6"/></svg>`;
+      gc.style.left = `${Math.random() * (window.innerWidth - 80) + 20}px`;
+      gc.style.top = `${Math.random() * (window.innerHeight - 200) + 80}px`;
+
+      gc.onclick = (e) => {
+        gc.remove();
+        const r = Math.random() * 100;
+        if (r < 15) { 
+          cursedFingerMul = 20; 
+          cursedFingerTime = 25; 
+          showFloatingText('CURSED FINGER! 20x Click / 0 CPS', e.clientX, e.clientY); 
+        }
+        else if (r < 21) { bloodFrenzyMul = 666; bloodFrenzyTime = 10; showFloatingText('BLOOD FRENZY! 666x', e.clientX, e.clientY); }
+        else if (r < 50) { dragonHarvestMul = 1.30; dragonHarvestTime = 180; showFloatingText('DRAGON HARVEST! 30%', e.clientX, e.clientY); }
+        else if (r < 90) { frenzyMul = 7; frenzyTime = 180; showFloatingText('FRENZY! 7x', e.clientX, e.clientY); }
+        else if (r < 96) { dragonFlightMul = 1223; dragonFlightTime = 15; showFloatingText('DRAGON FLIGHT! 1223x', e.clientX, e.clientY); }
+        else { clickFrenzyMul = 777; clickFrenzyTime = 10; showFloatingText('CLICK FRENZY! 777x', e.clientX, e.clientY); }
+        updateBuffDisplay(); updateDisplay();
+      };
+      document.body.appendChild(gc);
+      setTimeout(() => { if (document.body.contains(gc)) gc.remove(); }, 15000);
+    }
+
+    setInterval(spawnGoldenCandy, 120000);
+
+    setInterval(() => {
+      let changed = false;
+      const dec = (time, mul) => {
+        if (time > 0) { time--; if (time <= 0) { mul = 1; changed = true; } }
+        return [time, mul];
+      };
+      [frenzyTime, frenzyMul] = dec(frenzyTime, frenzyMul);
+      [clickFrenzyTime, clickFrenzyMul] = dec(clickFrenzyTime, clickFrenzyMul);
+      [dragonHarvestTime, dragonHarvestMul] = dec(dragonHarvestTime, dragonHarvestMul);
+      [dragonFlightTime, dragonFlightMul] = dec(dragonFlightTime, dragonFlightMul);
+      [bloodFrenzyTime, bloodFrenzyMul] = dec(bloodFrenzyTime, bloodFrenzyMul);
+      [cursedFingerTime, cursedFingerMul] = dec(cursedFingerTime, cursedFingerMul);
+
+      if (changed || frenzyTime > 0 || clickFrenzyTime > 0 || dragonHarvestTime > 0 || dragonFlightTime > 0 || bloodFrenzyTime > 0 || cursedFingerTime > 0) {
+        updateBuffDisplay();
+        if (changed) updateDisplay();
+      }
+      saveGame();
+    }, 1000);
+
+    setInterval(() => {
+      if (autoClickers > 0) {
+        autoAccumulator += (autoClickers * getBaseMultipliers()) / 10;
+        if (autoAccumulator >= 1) {
+          score += Math.floor(autoAccumulator);
+          autoAccumulator %= 1;
+          updateDisplay();
+        }
+      }
+    }, 100);
+
+    updateShopTexts(); updateDisplay(); updateBuffDisplay();
+  </script>
+</body>
+</html>
+
+
